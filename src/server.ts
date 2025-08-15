@@ -23,19 +23,42 @@ connectDB();
 app.use(helmet());
 
 // CORS configuration
+// In production, support multiple allowed origins via CORS_ORIGINS (comma-separated).
+// Falls back to single CORS_ORIGIN if provided. In development, keep permissive list for Expo tooling.
+const prodAllowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.CORS_ORIGIN 
-    : [  // Development - allow multiple origins for Expo
-        'http://localhost:8081',     // Expo dev server
-        'http://localhost:19006',    // Expo web
-        'http://10.0.2.2:8081',     // Android emulator
-        'http://192.168.100.33:8081', // Your computer's IP for physical devices
-        /^http:\/\/192\.168\.\d+\.\d+:8081$/, // Any device on local network
-        /^http:\/\/10\.0\.2\.\d+:8081$/,      // Android emulator range
-      ],
+  origin:
+    process.env.NODE_ENV === 'production'
+      ? (origin: any, callback: any) => {
+          // Non-browser clients (like mobile apps) may not send an Origin header.
+          if (!origin) return callback(null, true);
+
+          // Prefer CORS_ORIGINS (comma-separated). If absent, fall back to CORS_ORIGIN single value.
+          if (prodAllowedOrigins.length > 0) {
+            if (prodAllowedOrigins.includes(origin)) return callback(null, true);
+            return callback(new Error('Not allowed by CORS'));
+          }
+
+          const singleOrigin = process.env.CORS_ORIGIN;
+          if (!singleOrigin || singleOrigin === '*') return callback(null, true);
+          if (origin === singleOrigin) return callback(null, true);
+          return callback(new Error('Not allowed by CORS'));
+        }
+      : [
+          // Development - allow multiple origins for Expo
+          'http://localhost:8081', // Expo dev server
+          'http://localhost:19006', // Expo web
+          'http://10.0.2.2:8081', // Android emulator
+          'http://192.168.100.33:8081', // Example: your computer's IP for physical devices
+          /^http:\/\/192\.168\.\d+\.\d+:8081$/, // Any device on local network
+          /^http:\/\/10\.0\.2\.\d+:8081$/, // Android emulator range
+        ],
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
 
