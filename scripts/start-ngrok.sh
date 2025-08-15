@@ -5,12 +5,19 @@ set -euo pipefail
 # discovers the public HTTPS URL, and writes it into:
 # - ../TAMU-MOBILE-APP/.env     as EXPO_PUBLIC_API_BASE_URL
 # - ./.env                      as CORS_ORIGINS (comma-separated, preserving existing Vercel URL if present)
+#
+# Recommended: Use ngrok's free static domain for a stable URL.
+# 1) Reserve a free static domain in your ngrok dashboard (e.g. my-app.ngrok-free.app)
+# 2) Authenticate locally: ngrok config add-authtoken <token>
+# 3) Export NGROK_STATIC_DOMAIN=my-app.ngrok-free.app (or add it to backend .env)
+# 4) Run this script. It will start ngrok with --url=$NGROK_STATIC_DOMAIN and update both env files.
 
 BACKEND_PORT=${PORT:-5000}
 MODE_START=true
 if [[ "${1:-}" == "--update-only" ]]; then
   MODE_START=false
 fi
+NGROK_STATIC_DOMAIN=${NGROK_STATIC_DOMAIN:-}
 BACKEND_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 APP_DIR="$(cd "${BACKEND_DIR}/../TAMU-MOBILE-APP" && pwd)"
 BACKEND_ENV="${BACKEND_DIR}/.env"
@@ -23,9 +30,16 @@ command -v ngrok >/dev/null 2>&1 || {
 
 # Start ngrok if not already running on localhost:4040
 if ! curl -sS http://127.0.0.1:4040/api/tunnels >/dev/null 2>&1; then
-  echo "[INFO] Starting ngrok for http ${BACKEND_PORT}..."
-  # Run in background; user can stop it with Ctrl+C in the spawned terminal or kill the process.
-  nohup ngrok http ${BACKEND_PORT} >/dev/null 2>&1 &
+  if [[ -n "${NGROK_STATIC_DOMAIN}" && "${MODE_START}" == "true" ]]; then
+    echo "[INFO] Starting ngrok with static domain ${NGROK_STATIC_DOMAIN} -> http ${BACKEND_PORT}..."
+    nohup ngrok http --url="${NGROK_STATIC_DOMAIN}" ${BACKEND_PORT} >/dev/null 2>&1 &
+  elif [[ "${MODE_START}" == "true" ]]; then
+    echo "[INFO] Starting ngrok for http ${BACKEND_PORT}..."
+    # Run in background; user can stop it with Ctrl+C in the spawned terminal or kill the process.
+    nohup ngrok http ${BACKEND_PORT} >/dev/null 2>&1 &
+  else
+    echo "[INFO] --update-only: not starting ngrok, will only read existing tunnels."
+  fi
   # Wait for API to become available
   for i in {1..60}; do # up to ~30s
     sleep 0.5
@@ -45,6 +59,10 @@ for i in {1..60}; do # up to ~30s
   TUNNELS_JSON=$(curl -sS http://127.0.0.1:4040/api/tunnels || true)
   # Extract the first https public_url with sed (portable)
   PUBLIC_URL=$(echo "$TUNNELS_JSON" | sed -n 's/.*"public_url":"\(https:[^"]*\)".*/\1/p' | head -n1)
+  # If a static domain is configured, prefer it as the discovered URL
+  if [[ -z "${PUBLIC_URL}" && -n "${NGROK_STATIC_DOMAIN}" ]]; then
+    PUBLIC_URL="https://${NGROK_STATIC_DOMAIN}"
+  fi
   if [[ -n "${PUBLIC_URL}" && "${PUBLIC_URL}" == https://* ]]; then
     break
   fi
