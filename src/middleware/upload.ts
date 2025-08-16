@@ -1,4 +1,4 @@
-import multer from 'multer';
+import multer, { StorageEngine } from 'multer';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import cloudinary from '../config/cloudinary';
 import { Request } from 'express';
@@ -17,6 +17,8 @@ const storage = new CloudinaryStorage({
   } as any, // The type definitions for params are not perfectly aligned with the library
 });
 
-const upload = multer({ storage: storage });
+// CloudinaryStorage type is compatible at runtime but may not structurally type-match Multer's StorageEngine.
+// Cast to StorageEngine to satisfy TypeScript while keeping runtime behavior unchanged.
+const upload = multer({ storage: storage as unknown as StorageEngine });
 
 export default upload;

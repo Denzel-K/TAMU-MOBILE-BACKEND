@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { emailTemplates } from './emailTemplates';
 import path from 'path';
+import fs from 'fs';
 
 interface EmailOptions {
   to: string;
@@ -41,9 +42,27 @@ class EmailService {
 
   private async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
-      const logoPath = path.join(__dirname, 'tamu_logo.png');
+      // Resolve logo path robustly in both ts-node and compiled dist runs
+      const resolveLogoPath = (): string | null => {
+        const overrides = [process.env.EMAIL_LOGO_PATH].filter(Boolean) as string[];
+        const candidates = [
+          ...overrides,
+          path.join(__dirname, 'tamu_logo.png'), // when running from dist/services
+          path.join(process.cwd(), 'dist', 'services', 'tamu_logo.png'),
+          path.join(process.cwd(), 'src', 'services', 'tamu_logo.png'), // ts-node/dev
+          path.join(process.cwd(), 'assets', 'email', 'tamu_logo.png'),
+          path.join(process.cwd(), 'public', 'tamu_logo.png'),
+        ];
+        for (const p of candidates) {
+          try {
+            if (p && fs.existsSync(p)) return p;
+          } catch {}
+        }
+        return null;
+      };
+      const logoPath = resolveLogoPath();
       
-      const mailOptions = {
+      const mailOptions: any = {
         from: {
           name: 'Tamu',
           address: process.env.EMAIL_USER || 'noreply@tamu.com'
@@ -52,14 +71,18 @@ class EmailService {
         subject: options.subject,
         html: options.html,
         text: options.text,
-        attachments: [
+      };
+      if (logoPath) {
+        mailOptions.attachments = [
           {
             filename: 'tamu_logo.png',
             path: logoPath,
-            cid: 'tamu_logo' // Content-ID for embedding in HTML
-          }
-        ]
-      };
+            cid: 'tamu_logo', // Content-ID for embedding in HTML
+          },
+        ];
+      } else {
+        console.warn('Email logo not found. Proceeding without attachment.');
+      }
 
       const info = await this.transporter.sendMail(mailOptions);
       console.log(`Email sent successfully to: ${options.to} . Message ID: ${info.messageId}`);

@@ -657,9 +657,14 @@ export class AuthController {
         });
       }
 
+      // Normalize refreshTokens to a safe array to avoid runtime errors
+      const currentTokens = Array.isArray((user as any).refreshTokens)
+        ? (user as any).refreshTokens as string[]
+        : [];
+
       if (refreshToken) {
         // Remove specific refresh token
-        user.refreshTokens = user.refreshTokens.filter(token => token !== refreshToken);
+        user.refreshTokens = currentTokens.filter(token => token !== refreshToken);
       } else {
         // Remove all refresh tokens (logout from all devices)
         user.refreshTokens = [];
