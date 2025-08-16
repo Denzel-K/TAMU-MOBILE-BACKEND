@@ -36,7 +36,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         exp?: number;
       };
       
-      const user = await User.findById(decoded.id);
+      const user = await User.findById(decoded.id).select('+refreshTokens');
       if (!user) {
         res.status(401).json({
           success: false,
@@ -84,7 +84,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
         iat?: number;
         exp?: number;
       };
-      const user = await User.findById(decoded.id);
+      const user = await User.findById(decoded.id).select('+refreshTokens');
       
       if (user) {
         req.user = user;
