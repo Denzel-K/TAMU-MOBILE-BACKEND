@@ -37,6 +37,11 @@ router.post('/verify-otp', validateOTP, AuthController.verifyOTP);
 // @access  Public
 router.post('/resend-otp', validateOTP, AuthController.resendOTP);
 
+// @route   POST /api/auth/refresh
+// @desc    Refresh access token
+// @access  Public (uses refresh token)
+router.post('/refresh', AuthController.refreshToken);
+
 // @route   POST /api/auth/forgot-password
 // @desc    Send password reset OTP
 // @access  Public

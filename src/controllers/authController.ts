@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
+import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import { IUserRegistration, IUserLogin, IAuthResponse } from '../types';
 import { generateOTP, getOTPExpiryTime, isOTPExpired } from '../utils/otpGenerator';
@@ -7,6 +8,70 @@ import emailService from '../services/emailService';
 import { OAuth2Client } from 'google-auth-library';
 
 export class AuthController {
+  // Refresh access token using refresh token
+  static async refreshToken(req: Request, res: Response): Promise<Response> {
+    try {
+      const { refreshToken } = req.body || {};
+      if (!refreshToken || typeof refreshToken !== 'string') {
+        return res.status(400).json({ success: false, message: 'Refresh token is required' });
+      }
+
+      const secret = process.env.JWT_SECRET || 'fallback_secret';
+      let payload: any;
+      try {
+        payload = jwt.verify(refreshToken, secret);
+      } catch (err) {
+        return res.status(401).json({ success: false, message: 'Invalid refresh token' });
+      }
+
+      if (!payload || (payload as any).type !== 'refresh' || !(payload as any).id) {
+        return res.status(401).json({ success: false, message: 'Invalid refresh token payload' });
+      }
+
+      const user = await User.findById((payload as any).id).select('+refreshTokens');
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      // Ensure the provided refresh token is one we issued
+      const tokenExists = Array.isArray(user.refreshTokens) && user.refreshTokens.includes(refreshToken);
+      if (!tokenExists) {
+        return res.status(401).json({ success: false, message: 'Refresh token not recognized' });
+      }
+
+      // Rotate tokens: issue new access + refresh, replace the used refresh token
+      const newAccessToken = user.generateAuthToken();
+      const newRefreshToken = user.generateRefreshToken();
+
+      user.refreshTokens = user.refreshTokens
+        .filter((t: string) => t !== refreshToken)
+        .concat(newRefreshToken);
+      await user.save();
+
+      const response: IAuthResponse = {
+        success: true,
+        message: 'Token refreshed successfully',
+        user: {
+          _id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          isEmailVerified: user.isEmailVerified,
+          isPhoneVerified: user.isPhoneVerified,
+        },
+        tokens: {
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+        },
+      };
+
+      return res.status(200).json(response);
+    } catch (error) {
+      console.error('Refresh token error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error during token refresh' });
+    }
+  }
   // Update current user profile
   static async updateProfile(req: Request, res: Response): Promise<Response> {
     try {
