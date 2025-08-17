@@ -63,8 +63,8 @@ router.get('/profile', authenticate, AuthController.getProfile);
 router.patch('/profile', authenticate, AuthController.updateProfile);
 
 // @route   POST /api/auth/logout
-// @desc    Logout user
-// @access  Private
-router.post('/logout', authenticate, AuthController.logout);
+// @desc    Logout user (accepts refresh token, does not require access token)
+// @access  Public (token checked inside controller)
+router.post('/logout', AuthController.logout);
 
 export default router;

@@ -30,7 +30,8 @@ export class AuthController {
 
       const user = await User.findById((payload as any).id).select('+refreshTokens');
       if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found' });
+        // Idempotent: if the user no longer exists, consider the session already logged out
+        return res.status(200).json({ success: true, message: 'Logged out successfully' });
       }
 
       // Ensure the provided refresh token is one we issued
@@ -712,35 +713,37 @@ export class AuthController {
   // Logout user
   static async logout(req: Request, res: Response): Promise<Response> {
     try {
-      const { refreshToken } = req.body;
-      const user = req.user;
-
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'User not authenticated'
-        });
+      const { refreshToken } = req.body || {};
+      if (!refreshToken || typeof refreshToken !== 'string') {
+        return res.status(400).json({ success: false, message: 'Refresh token is required' });
       }
 
-      // Normalize refreshTokens to a safe array to avoid runtime errors
+      const secret = process.env.JWT_SECRET || 'fallback_secret';
+      let payload: any;
+      try {
+        payload = jwt.verify(refreshToken, secret);
+      } catch (e) {
+        return res.status(401).json({ success: false, message: 'Invalid token.' });
+      }
+
+      if (!payload || (payload as any).type !== 'refresh' || !(payload as any).id) {
+        return res.status(401).json({ success: false, message: 'Invalid token.' });
+      }
+
+      const user = await User.findById((payload as any).id).select('+refreshTokens');
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
       const currentTokens = Array.isArray((user as any).refreshTokens)
-        ? (user as any).refreshTokens as string[]
+        ? ((user as any).refreshTokens as string[])
         : [];
 
-      if (refreshToken) {
-        // Remove specific refresh token
-        user.refreshTokens = currentTokens.filter(token => token !== refreshToken);
-      } else {
-        // Remove all refresh tokens (logout from all devices)
-        user.refreshTokens = [];
-      }
-
+      // Remove the provided refresh token only
+      user.refreshTokens = currentTokens.filter((t) => t !== refreshToken);
       await user.save();
 
-      return res.status(200).json({
-        success: true,
-        message: 'Logged out successfully'
-      });
+      return res.status(200).json({ success: true, message: 'Logged out successfully' });
     } catch (error) {
       console.error('Logout error:', error);
       return res.status(500).json({
