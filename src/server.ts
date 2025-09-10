@@ -164,7 +164,6 @@ app.listen(PORT as number, '0.0.0.0', () => {
   console.log(`>> TAMU Backend Server running on port ${PORT}`);
   console.log(`>> Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`>> CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:8081'}`);
-  console.log(`>> MongoDB URI: ${process.env.MONGODB_URI || 'mongodb://localhost:27017/tamu_customers'}`);
   console.log(`>> Server accessible at:`);
   console.log(`   - Local: http://localhost:${PORT}`);
   console.log(`   - Android Emulator: http://10.0.2.2:${PORT}`);
