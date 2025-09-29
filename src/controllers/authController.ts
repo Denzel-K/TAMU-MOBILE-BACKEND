@@ -311,7 +311,7 @@ export class AuthController {
         });
       }
 
-      const user = await User.findOne({ email }).select('+otp');
+      const user = await User.findOne({ email }).select('+otp.code +otp.expiresAt +otp.type');
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -329,7 +329,16 @@ export class AuthController {
       if (isOTPExpired(user.otp.expiresAt)) {
         return res.status(400).json({
           success: false,
-          message: 'OTP has expired. Please request a new one.'
+          errorCode: 'OTP_EXPIRED',
+          message: 'The verification code is no longer valid. Please request a new code.'
+        });
+      }
+
+      // Ensure the provided OTP code matches
+      if (user.otp.code !== otp) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid OTP'
         });
       }
 
@@ -558,7 +567,7 @@ export class AuthController {
         });
       }
 
-      const user = await User.findOne({ email }).select('+otp +password');
+      const user = await User.findOne({ email }).select('+otp.code +otp.expiresAt +otp.type +password');
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -569,14 +578,16 @@ export class AuthController {
       if (!user.otp || user.otp.type !== 'password_reset') {
         return res.status(400).json({
           success: false,
-          message: 'Invalid or expired reset request'
+          errorCode: 'RESET_REQUEST_INVALID',
+          message: 'Invalid reset request.'
         });
       }
 
       if (isOTPExpired(user.otp.expiresAt)) {
         return res.status(400).json({
           success: false,
-          message: 'OTP has expired. Please request a new one.'
+          errorCode: 'OTP_EXPIRED',
+          message: 'The verification code is no longer valid. Please request a new code.'
         });
       }
 
