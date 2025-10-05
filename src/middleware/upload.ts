@@ -1,4 +1,4 @@
-import multer, { type StorageEngine, type File as MulterFile } from 'multer';
+import multer, { type StorageEngine } from 'multer';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import cloudinary from '../config/cloudinary';
 import { Request } from 'express';
@@ -8,7 +8,7 @@ const storage = new CloudinaryStorage({
   params: {
     folder: 'kikapu-profile-photos',
     allowed_formats: ['jpg', 'png', 'jpeg'],
-    public_id: (req: Request, file: MulterFile) => {
+    public_id: (req: Request, file: Express.Multer.File) => {
       // Create a unique public ID for the image
       // req.user is available because of our custom express.d.ts file
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
