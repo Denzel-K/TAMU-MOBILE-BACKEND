@@ -53,9 +53,12 @@ const corsOptions = {
           'http://localhost:8081', // Expo dev server
           'http://localhost:19006', // Expo web
           'http://10.0.2.2:8081', // Android emulator
-          'http://192.168.100.33:8081', // Example: your computer's IP for physical devices
+          'http://192.168.100.70:8081', // Example: your computer's IP for physical devices
           /^http:\/\/192\.168\.\d+\.\d+:8081$/, // Any device on local network
           /^http:\/\/10\.0\.2\.\d+:8081$/, // Android emulator range
+
+          //vite (tamu-nexus-gateway)
+          'http://localhost:8000',
         ],
   credentials: true,
   optionsSuccessStatus: 200,
