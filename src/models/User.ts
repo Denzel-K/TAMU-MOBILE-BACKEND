@@ -87,7 +87,17 @@ const userSchema = new Schema<IUser>({
     type: [String],
     default: [],
     select: false
-  }
+  },
+  expoPushTokens: [
+    new Schema(
+      {
+        token: { type: String, required: true },
+        platform: { type: String, enum: ['android', 'ios', 'web'], required: true },
+        updatedAt: { type: Date, default: Date.now },
+      },
+      { _id: false }
+    ),
+  ]
 }, {
   timestamps: true,
   toJSON: {

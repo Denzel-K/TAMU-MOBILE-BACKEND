@@ -9,6 +9,7 @@ import authRoutes from './routes/auth';
 
 // API routes
 import profileRoutes from './routes/profile.routes';
+import pushRoutes from './routes/push.routes';
 
 // Load environment variables
 dotenv.config();
@@ -104,6 +105,7 @@ app.get('/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/users', pushRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

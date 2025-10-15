@@ -26,6 +26,7 @@ export interface IUser extends Document {
   refreshTokens: string[];
   profilePhoto?: string;
   socialLinks?: ISocialLinks;
+  expoPushTokens?: { token: string; platform: 'android' | 'ios' | 'web'; updatedAt: Date }[];
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
